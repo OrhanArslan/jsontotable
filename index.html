@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSONScope</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══ TOKENS ══ */
+[data-theme="dark"]{
+  --bg:#0d1117;--sur:#161b22;--sur2:#1c2230;--sur3:#21293a;--sur4:#263041;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.18);
+  --tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;
+  --ac:#388bfd;--ac2:#58a6ff;--ac-bg:rgba(56,139,253,.12);
+  --gn:#3fb950;--gn-bg:rgba(63,185,80,.1);
+  --am:#e3b341;--am-bg:rgba(227,179,65,.1);
+  --rd:#f85149;--pu:#bc8cff;--cy:#39d3f7;
+  --kc:#79c0ff;--ib:#131820;--thb:#1c2230;--rh:rgba(255,255,255,.03);
+  --sc:rgba(255,255,255,.1);--sh:rgba(0,0,0,.6);
+  --d0:#388bfd;--d1:#bc8cff;--d2:#3fb950;--d3:#e3b341;--d4:#39d3f7;--d5:#f85149;
+}
+[data-theme="light"]{
+  --bg:#f6f8fa;--sur:#fff;--sur2:#f6f8fa;--sur3:#eaeef2;--sur4:#e1e6eb;
+  --b1:rgba(0,0,0,.07);--b2:rgba(0,0,0,.11);--b3:rgba(0,0,0,.2);
+  --tx:#1f2328;--tx2:#656d76;--tx3:#9ba3ac;
+  --ac:#0969da;--ac2:#0550ae;--ac-bg:rgba(9,105,218,.08);
+  --gn:#1a7f37;--gn-bg:rgba(26,127,55,.08);
+  --am:#9a6700;--am-bg:rgba(154,103,0,.08);
+  --rd:#cf222e;--pu:#8250df;--cy:#0a7490;
+  --kc:#0550ae;--ib:#f0f3f7;--thb:#f6f8fa;--rh:rgba(0,0,0,.025);
+  --sc:rgba(0,0,0,.14);--sh:rgba(0,0,0,.14);
+  --d0:#0969da;--d1:#8250df;--d2:#1a7f37;--d3:#9a6700;--d4:#0a7490;--d5:#cf222e;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Inter',sans-serif;font-size:13px;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;}
+
+/* ══ TOPBAR ══ */
+.bar{display:flex;align-items:center;gap:8px;padding:0 12px;height:46px;background:var(--sur);border-bottom:1px solid var(--b2);flex-shrink:0;z-index:200;}
+.logo{display:flex;align-items:center;gap:7px;flex-shrink:0;margin-right:2px;}
+.logo-mark{width:26px;height:26px;background:linear-gradient(135deg,#388bfd,#bc8cff);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.logo-text{font-size:14px;font-weight:600;letter-spacing:-.2px;}
+.logo-text em{color:var(--ac);font-style:normal;}
+.vsep{width:1px;height:18px;background:var(--b2);flex-shrink:0;}
+
+/* Panel mode toggle */
+.mgrp{display:flex;background:var(--sur2);border:1px solid var(--b2);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.mbtn{padding:0 11px;height:30px;font-size:11.5px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--tx3);transition:all .14s;display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:'Inter',sans-serif;}
+.mbtn.on{background:var(--ac);color:#fff;}
+.mbtn:not(.on):hover{color:var(--tx2);background:var(--sur3);}
+
+/* Search */
+.srch{position:relative;flex:1;max-width:220px;min-width:80px;}
+.si{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none;font-size:12px;}
+#bq{width:100%;background:var(--sur2);border:1px solid var(--b2);color:var(--tx);border-radius:6px;padding:5px 8px 5px 26px;font-size:12px;outline:none;transition:border-color .14s;font-family:'Inter',sans-serif;}
+#bq:focus{border-color:var(--ac);}
+#bq::placeholder{color:var(--tx3);}
+
+.fg{flex:1;}
+.stat{font-size:11px;color:var(--tx3);white-space:nowrap;flex-shrink:0;}
+.sp{display:none;width:14px;height:14px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .5s linear infinite;flex-shrink:0;}
+.sp.on{display:block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.tb{display:flex;align-items:center;gap:4px;padding:0 10px;height:30px;border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--b2);background:var(--sur2);color:var(--tx2);transition:all .14s;flex-shrink:0;white-space:nowrap;font-family:'Inter',sans-serif;}
+.tb:hover{border-color:var(--b3);color:var(--tx);}
+.tb.g:hover{border-color:var(--gn);color:var(--gn);background:var(--gn-bg);}
+.tb.ic{width:30px;padding:0;justify-content:center;}
+
+/* ══ LAYOUT ══ */
+.ws{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* Left pane (editor) */
+.lp{display:flex;flex-direction:column;background:var(--sur);border-right:1px solid var(--b2);width:320px;min-width:320px;flex-shrink:0;overflow:hidden;transition:width .2s,min-width .2s;}
+.lp.hide{width:0!important;min-width:0!important;overflow:hidden;border:none;}
+
+.ph{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.plbl{font-size:9.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);}
+.pac{display:flex;gap:3px;}
+.ib2{width:24px;height:24px;border:1px solid var(--b2);background:transparent;border-radius:5px;cursor:pointer;color:var(--tx3);display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12s;}
+.ib2:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-bg);}
+
+.ea{flex:1;position:relative;overflow:hidden;}
+#ji{position:absolute;inset:0;background:transparent;border:none;outline:none;resize:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.75;color:var(--tx);padding:10px 12px;caret-color:var(--ac);tab-size:2;}
+#ji::placeholder{color:var(--tx3);font-size:11px;}
+#ji::-webkit-scrollbar{width:3px;}
+#ji::-webkit-scrollbar-thumb{background:var(--sc);border-radius:2px;}
+
+.vb{padding:6px 12px;border-top:1px solid var(--b1);display:flex;align-items:center;gap:6px;font-size:10.5px;min-height:30px;flex-shrink:0;font-family:'JetBrains Mono',monospace;}
+.vd{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.vb.ok .vd{background:var(--gn);box-shadow:0 0 4px var(--gn);}.vb.ok{color:var(--gn);}
+.vb.er .vd{background:var(--rd);}.vb.er{color:var(--rd);}
+.vb.id .vd{background:var(--tx3);}.vb.id{color:var(--tx3);}
+
+.lc{padding:8px 12px;border-top:1px solid var(--b1);display:flex;flex-direction:column;gap:7px;flex-shrink:0;}
+.cr{display:flex;gap:5px;}
+.ss{flex:1;background:var(--sur2);border:1px solid var(--b2);color:var(--tx2);border-radius:6px;padding:5px 7px;font-size:11.5px;outline:none;cursor:pointer;font-family:'Inter',sans-serif;}
+.ss:hover,.ss:focus{border-color:var(--ac);}
+.ss option{background:var(--sur2);color:var(--tx);}
+.bp{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:32px;border-radius:6px;background:var(--ac);color:#fff;border:none;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .13s;font-family:'Inter',sans-serif;}
+.bp:hover{background:var(--ac2);box-shadow:0 0 14px var(--ac-bg);}
+.bs{height:32px;padding:0 10px;background:var(--sur2);border:1px solid var(--b2);color:var(--tx2);border-radius:6px;font-size:11.5px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .12s;}
+.bs:hover{color:var(--tx);background:var(--sur3);}
+
+/* Right pane */
+.rp{display:flex;flex-direction:column;flex:1;overflow:hidden;background:var(--bg);min-width:0;transition:flex .2s;}
+.rp.hide{flex:0;overflow:hidden;}
+
+/* The actual scroll area — THIS is the single scroll container */
+.out{
+  flex:1;
+  overflow:auto; /* both axes */
+  padding:14px;
+  position:relative;
+}
+.out::-webkit-scrollbar{width:8px;height:8px;}
+.out::-webkit-scrollbar-track{background:transparent;}
+.out::-webkit-scrollbar-thumb{background:var(--sc);border-radius:4px;}
+.out::-webkit-scrollbar-corner{background:transparent;}
+
+/* Empty */
+.emp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:200px;text-align:center;color:var(--tx3);padding:40px;}
+.ei{font-size:40px;animation:bob 3s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.et{font-size:15px;font-weight:600;color:var(--tx2);}
+.eh{font-size:11.5px;line-height:1.9;max-width:240px;}
+kbd{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--sur3);border:1px solid var(--b3);border-radius:3px;padding:2px 4px;color:var(--tx2);}
+
+/* ══════════════════════════════════════════
+   TABLE SYSTEM
+
+   KEY ARCHITECTURE DECISIONS:
+   1. The outer .out div scrolls both x and y.
+   2. #jroot is inline-block so it takes its natural width.
+   3. All tables are table-layout:auto — browser sizes cols to content.
+   4. String cells have a max-width + overflow:hidden (via CSS on the cell)
+      but the TEXT inside uses our JS truncation, not CSS ellipsis,
+      so the full value is accessible on hover/click.
+   5. Nested tables inside cells: the cell has no max-width restriction,
+      it grows to fit the nested table. Parent table grows accordingly.
+      The outer scroll handles the overflow — no clipping inside.
+   6. Column width for scalar cols: capped at MAX_COL_W via <col> width.
+      For complex cols (object/array content): no cap — grows to fit.
+══════════════════════════════════════════ */
+
+/* Root — inline-block so it takes natural (content) width */
+#jroot{display:inline-block;min-width:100%;}
+
+/* Base table */
+.jt{
+  border-collapse:collapse;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  background:var(--sur);
+  border:1px solid var(--b2);
+  border-radius:8px;
+  overflow:hidden; /* for border-radius */
+  /* table-layout: AUTO — let content determine column widths */
+  table-layout:auto;
+}
+
+/* thead */
+.jt thead th{
+  background:var(--thb);
+  padding:7px 12px;
+  text-align:left;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  color:var(--tx3);
+  border-bottom:1px solid var(--b2);
+  white-space:nowrap; /* headers don't wrap */
+  cursor:pointer;
+  user-select:none;
+  position:sticky;
+  top:0;z-index:10;
+}
+.jt thead th:hover{color:var(--tx2);}
+.jt thead th.sa::after{content:' ↑';color:var(--ac);}
+.jt thead th.sd::after{content:' ↓';color:var(--ac);}
+
+/* tbody */
+.jt tbody tr{border-bottom:1px solid var(--b1);}
+.jt tbody tr:last-child{border-bottom:none;}
+.jt tbody tr:hover>td{background:var(--rh);}
+.jt tbody td{padding:0;vertical-align:top;}
+
+/* Index col — truly fixed */
+.ci{
+  width:36px;min-width:36px;max-width:36px;
+  text-align:center;color:var(--tx3);font-size:10px;
+  background:var(--ib);border-right:1px solid var(--b1)!important;
+  padding:8px 2px!important;user-select:none;white-space:nowrap;
+  vertical-align:top;
+}
+
+/* Key col in KV tables — shrink-to-fit, nowrap */
+.ck{
+  padding:8px 12px!important;
+  white-space:nowrap;
+  font-weight:500;
+  color:var(--kc);
+  border-right:1px solid var(--b1);
+  vertical-align:top;
+  font-size:12px;
+}
+
+/* Value col — the flex cell, grows/shrinks freely */
+.cv{
+  padding:8px 12px!important;
+  vertical-align:top;
+  /* Crucially: no max-width, no overflow:hidden here.
+     String content is truncated by JS, not CSS.
+     Complex content (nested tables) can grow freely.
+     The outer scroll container handles overflow. */
+}
+
+/* In multi-col array tables, scalar cells get a max-width
+   applied via inline style in JS (not CSS, so complex cells skip it) */
+
+/* Nested table wrapper — provides the colored left border and spacing */
+.nw{
+  display:inline-block; /* shrink to content width */
+  min-width:100%;       /* but at least fill the cell */
+  border-radius:6px;
+  overflow:hidden;
+  border:1px solid var(--b2);
+  vertical-align:top;
+}
+/* Depth colors */
+.nw.d0{border-left:2.5px solid var(--d0);}
+.nw.d1{border-left:2.5px solid var(--d1);}
+.nw.d2{border-left:2.5px solid var(--d2);}
+.nw.d3{border-left:2.5px solid var(--d3);}
+.nw.d4{border-left:2.5px solid var(--d4);}
+.nw.d5{border-left:2.5px solid var(--d5);}
+.nw>.jt{border:none;border-radius:0;min-width:100%;}
+.nw .jt thead th{font-size:9.5px;padding:5px 10px;}
+.nw .jt .ck{padding:6px 10px!important;font-size:11.5px;}
+.nw .jt .cv{padding:6px 10px!important;}
+.nw .nw .jt thead th{font-size:9px;padding:4px 8px;}
+.nw .nw .jt .ck{padding:5px 8px!important;font-size:11px;}
+.nw .nw .jt .cv{padding:5px 8px!important;}
+
+/* Scalar values */
+.vs{color:var(--gn);}
+.vn{color:var(--am);}
+.vb2{color:var(--pu);}
+.vnil{color:var(--tx3);font-style:italic;}
+.vurl{color:var(--cy);text-decoration:underline dotted;cursor:pointer;}
+.vurl:hover{color:var(--ac2);}
+
+/* Truncated string */
+.ts-wrap{display:inline;white-space:nowrap;}
+.ts-btn{
+  display:inline-block;margin-left:4px;font-size:10px;
+  color:var(--tx3);background:var(--sur3);border:1px solid var(--b2);
+  border-radius:3px;padding:0 4px;cursor:pointer;
+  vertical-align:middle;white-space:nowrap;font-family:'Inter',sans-serif;
+  line-height:16px;transition:all .12s;
+}
+.ts-btn:hover{color:var(--ac);border-color:var(--ac);background:var(--ac-bg);}
+
+/* Pills for small primitive arrays */
+.pills{display:flex;flex-wrap:wrap;gap:3px;align-items:center;}
+.pill{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;background:var(--sur3);border:1px solid var(--b2);font-size:11px;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+
+/* Empty badge */
+.eb{font-size:10.5px;color:var(--tx3);background:var(--sur3);border:1px solid var(--b2);border-radius:4px;padding:2px 7px;font-family:'JetBrains Mono',monospace;}
+
+/* Search highlight */
+mark{background:rgba(227,179,65,.28);color:var(--am);border-radius:2px;padding:0 1px;}
+
+/* Tooltip */
+#tip{position:fixed;z-index:8000;background:var(--sur2);border:1px solid var(--b3);color:var(--tx);padding:7px 11px;border-radius:8px;font-size:11.5px;max-width:480px;word-break:break-all;white-space:pre-wrap;box-shadow:0 8px 32px var(--sh);line-height:1.6;pointer-events:none;font-family:'JetBrains Mono',monospace;display:none;}
+
+/* Toast */
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--sur3);border:1px solid var(--b3);color:var(--tx);padding:7px 16px;border-radius:8px;font-size:12px;z-index:9999;transition:transform .26s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none;box-shadow:0 8px 24px var(--sh);}
+.toast.sh{transform:translateX(-50%) translateY(0);}
+
+/* Responsive */
+@media(max-width:820px){
+  .ws{flex-direction:column;}
+  .lp{width:100%!important;min-width:0!important;height:280px;border-right:none;border-bottom:1px solid var(--b2);}
+  .lp.hide{height:0!important;overflow:hidden;}
+}
+@media(max-width:520px){
+  .logo-text{display:none;}
+  .bar{gap:5px;padding:0 8px;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="bar">
+  <div class="logo">
+    <div class="logo-mark">⬡</div>
+    <span class="logo-text">JSON<em>Scope</em></span>
+  </div>
+  <div class="vsep"></div>
+
+  <!-- Panel modes -->
+  <div class="mgrp">
+    <button class="mbtn" id="m-json" onclick="setMode('json',this)" title="Sadece JSON">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6l2 2-2 2M9 10h2"/></svg>JSON
+    </button>
+    <button class="mbtn on" id="m-both" onclick="setMode('both',this)" title="İkisi birden">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="6" height="12" rx="1.5"/><rect x="9" y="2" width="6" height="12" rx="1.5"/></svg>Split
+    </button>
+    <button class="mbtn" id="m-tbl" onclick="setMode('table',this)" title="Sadece Tablo">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 7h12M6 3v10"/></svg>Table
+    </button>
+  </div>
+
+  <div class="vsep"></div>
+
+  <div class="srch">
+    <span class="si">⌕</span>
+    <input id="bq" type="text" placeholder="Filter…" oninput="doFilter(this.value)">
+  </div>
+
+  <span class="stat" id="stat">—</span>
+  <div class="fg"></div>
+  <div class="sp" id="sp"></div>
+  <button class="tb ic" id="thb" onclick="toggleTheme()" title="Theme">🌙</button>
+  <button class="tb" onclick="copyAll()">⧉ Copy JSON</button>
+  <button class="tb g" onclick="exportCSV()">↓ CSV</button>
+  <button class="tb g" onclick="exportJSON()">↓ JSON</button>
+</div>
+
+<!-- WORKSPACE -->
+<div class="ws">
+
+  <!-- LEFT: Editor -->
+  <div class="lp" id="lp">
+    <div class="ph">
+      <span class="plbl">JSON Input</span>
+      <div class="pac">
+        <button class="ib2" title="Format" onclick="fmtJSON()">{ }</button>
+        <button class="ib2" title="Clear" onclick="clearAll()">✕</button>
+      </div>
+    </div>
+    <div class="ea"><textarea id="ji" spellcheck="false" placeholder="JSON yapıştırın…&#10;&#10;Ctrl+Enter → Render&#10;Ctrl+Shift+F → Format"></textarea></div>
+    <div class="vb id" id="vb"><div class="vd"></div><span id="vm">Bekleniyor…</span></div>
+    <div class="lc">
+      <div class="cr">
+        <select class="ss" onchange="loadSmp(this.value);this.value=''">
+          <option value="">— Örnek veri —</option>
+          <option value="customer">👤 Müşteri API Response</option>
+          <option value="scan">🔍 Network Scan</option>
+          <option value="users">📋 Kullanıcı Listesi</option>
+          <option value="orders">🛒 Siparişler</option>
+        </select>
+      </div>
+      <div class="cr">
+        <button class="bp" onclick="render()">▶ Render</button>
+        <button class="bs" onclick="fmtJSON()">{ }</button>
+        <button class="bs" onclick="document.getElementById('fi').click()">📁</button>
+        <input type="file" id="fi" accept=".json,.txt" style="display:none" onchange="loadFile(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Output -->
+  <div class="rp" id="rp">
+    <div class="out" id="out">
+      <div class="emp" id="emp">
+        <div class="ei">⬡</div>
+        <div class="et">JSON yapıştır ve render et</div>
+        <div class="eh">Nested yapılar inline tablo olarak gösterilir.<br><kbd>Ctrl+Enter</kbd> render &nbsp; <kbd>Ctrl+F</kbd> ara</div>
+      </div>
+      <div id="jroot" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════
+   DATA
+═══════════════════════════ */
+let DATA = null;
+let _sort = {};
+
+const TRUNC = 60; // display chars before truncation
+
+/* ═══════════════════════════
+   SAMPLES
+═══════════════════════════ */
+const S = {
+  customer:{requestId:"req_8f3a2c91-4d7e",timestamp:"2024-11-15T14:32:07.841Z",status:"success",statusCode:200,customer:{id:"cust_7a4b2c8f",externalRef:"EXT-2024-00471",personalInfo:{firstName:"Zeynep",lastName:"Arslan",dateOfBirth:"1990-03-22",gender:"F",email:"zeynep.arslan@email.com",phone:"+90 532 871 44 12",preferredLanguage:"tr"},tier:"Gold",isActive:true,isVerified:true,riskScore:24,creditLimit:15000,currentBalance:3247.85,loyaltyPoints:4820,addresses:[{type:"home",line1:"Atatürk Cad. No:47 Daire:5",district:"Kadıköy",city:"İstanbul",postalCode:"34710",country:"TR",isPrimary:true},{type:"work",line1:"Levent Towers A Blok Kat:12",district:"Beşiktaş",city:"İstanbul",postalCode:"34330",country:"TR",isPrimary:false}],consents:{marketing:true,sms:false,email:true,callCenter:false,thirdParty:false,updatedAt:"2024-09-01T11:00:00Z"},segments:["high_value","digital_native","istanbul_resident","gold_tier"],lastActivity:{type:"purchase",channel:"mobile_app",at:"2024-11-14T18:24:53Z",amount:849.90,merchantName:"Migros Online",merchantCategory:"grocery"}},accounts:[{accountId:"acc_d4f9a1b2",type:"checking",currency:"TRY",balance:3247.85,availableBalance:2947.85,iban:"TR33 0006 1005 1978 6457 8413 26",openedAt:"2021-06-10",status:"active"},{accountId:"acc_e7b3c2d1",type:"savings",currency:"TRY",balance:28500,availableBalance:28500,iban:"TR45 0006 1005 1978 6457 8413 27",openedAt:"2022-01-15",status:"active"}],recentTransactions:[{id:"txn_001",date:"2024-11-14",description:"Migros Online",amount:-849.90,currency:"TRY",category:"grocery",status:"completed"},{id:"txn_002",date:"2024-11-13",description:"Netflix TR",amount:-184.99,currency:"TRY",category:"entertainment",status:"completed"},{id:"txn_003",date:"2024-11-12",description:"Maaş Ödemesi",amount:22500,currency:"TRY",category:"income",status:"completed"},{id:"txn_004",date:"2024-11-11",description:"Starbucks Nişantaşı",amount:-127.50,currency:"TRY",category:"food_drink",status:"completed"},{id:"txn_005",date:"2024-11-10",description:"Amazon.com.tr",amount:-2349,currency:"TRY",category:"shopping",status:"completed"}],meta:{dataVersion:"v3.2",generatedBy:"customer-profile-service",region:"eu-west-1",processingMs:47,cacheHit:false}},
+  scan:{scanStatus:"SUCCEEDED",scanStartTimestamp:"2020-11-09T00:13:30.036Z",scanDuration:"46.721s",fullDetectionReports:{},reconnaissanceReport:{targetInfo:{networkEndpoints:[{type:"IP",ipAddress:{addressFamily:"IPV4",address:"10.0.0.7"}}]},networkServices:[{networkEndpoint:{type:"IP_PORT",ipAddress:{addressFamily:"IPV4",address:"10.0.0.7"},port:{portNumber:53}},transportProtocol:"TCP",serviceName:"domain"},{networkEndpoint:{type:"IP_PORT",ipAddress:{addressFamily:"IPV4",address:"10.0.0.7"},port:{portNumber:80}},transportProtocol:"TCP",serviceName:"http",software:{name:"nginx",version:"1.18.0"}},{networkEndpoint:{type:"IP_PORT",ipAddress:{addressFamily:"IPV4",address:"10.0.0.7"},port:{portNumber:443}},transportProtocol:"TCP",serviceName:"https",software:{name:"nginx",version:"1.18.0"}}]}},
+  users:[{id:1,name:"Ayşe Kaya",email:"ayse@example.com",role:"admin",active:true,score:98.5,address:{city:"İzmir",district:"Karşıyaka"},tags:["vip","early-adopter"]},{id:2,name:"Mehmet Demir",email:"mehmet@example.com",role:"user",active:false,score:74.2,address:{city:"İstanbul",district:"Beşiktaş"},tags:["user"]},{id:3,name:"Fatma Yıldız",email:"fatma@example.com",role:"editor",active:true,score:86.0,address:{city:"Ankara",district:"Çankaya"},tags:["editor","beta"]}],
+  orders:[{orderId:"ORD-001",status:"shipped",total:28098.99,customer:{id:1,name:"Ayşe Kaya",phone:"+90 555 111 22 33"},address:{city:"İzmir",zip:"35600"},items:[{sku:"P001",qty:1,price:24999.99},{sku:"P002",qty:1,price:599}],timestamps:{created:"2024-05-01T10:30:00Z",shipped:"2024-05-02T08:00:00Z"}},{orderId:"ORD-002",status:"pending",total:3499,customer:{id:3,name:"Fatma Yıldız",phone:"+90 555 444 55 66"},address:{city:"İstanbul",zip:"34349"},items:[{sku:"P003",qty:1,price:3499}],timestamps:{created:"2024-05-03T14:15:00Z",shipped:null}}]
+};
+
+/* ═══════════════════════════
+   VALIDATE
+═══════════════════════════ */
+function validate(){
+  const raw=document.getElementById('ji').value.trim();
+  const bar=document.getElementById('vb'),msg=document.getElementById('vm');
+  if(!raw){bar.className='vb id';msg.textContent='Bekleniyor…';return null;}
+  try{
+    const p=JSON.parse(raw);
+    bar.className='vb ok';
+    const t=Array.isArray(p)?`Array[${p.length}]`:p&&typeof p==='object'?`Object{${Object.keys(p).length}}`:typeof p;
+    msg.textContent=`✓ ${t}`;return p;
+  }catch(e){bar.className='vb er';msg.textContent=`✗ ${e.message.slice(0,50)}`;return null;}
+}
+document.getElementById('ji').addEventListener('input',validate);
+
+/* ═══════════════════════════
+   PANEL MODE
+═══════════════════════════ */
+function setMode(m,btn){
+  document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const lp=document.getElementById('lp'),rp=document.getElementById('rp');
+  if(m==='json'){lp.classList.remove('hide');rp.classList.add('hide');}
+  else if(m==='table'){lp.classList.add('hide');rp.classList.remove('hide');}
+  else{lp.classList.remove('hide');rp.classList.remove('hide');}
+}
+
+/* ═══════════════════════════
+   THEME
+═══════════════════════════ */
+function toggleTheme(){
+  const h=document.documentElement,d=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',d?'light':'dark');
+  document.getElementById('thb').textContent=d?'🌙':'☀️';
+  localStorage.setItem('jst',d?'light':'dark');
+}
+(()=>{const s=localStorage.getItem('jst');if(s){document.documentElement.setAttribute('data-theme',s);document.getElementById('thb').textContent=s==='light'?'🌙':'☀️';}})();
+
+/* ═══════════════════════════
+   CONTROLS
+═══════════════════════════ */
+function fmtJSON(){try{const v=JSON.parse(document.getElementById('ji').value);document.getElementById('ji').value=JSON.stringify(v,null,2);validate();toast('Formatlandı ✓');}catch{toast('Geçersiz JSON!');}}
+function clearAll(){document.getElementById('ji').value='';validate();clrOut();}
+function copyAll(){if(!DATA){toast('Önce render edin');return;}navigator.clipboard.writeText(JSON.stringify(DATA,null,2));toast('Kopyalandı ✓');}
+function loadFile(e){const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=ev=>{document.getElementById('ji').value=ev.target.result;validate();render();};fr.readAsText(f);e.target.value='';}
+function loadSmp(k){if(!k)return;document.getElementById('ji').value=JSON.stringify(S[k],null,2);validate();render();}
+
+/* ═══════════════════════════
+   RENDER
+═══════════════════════════ */
+function render(){
+  const raw=document.getElementById('ji').value.trim();
+  if(!raw){clrOut();return;}
+  const p=validate();if(!p)return;
+  DATA=p;
+  document.getElementById('sp').classList.add('on');
+  document.getElementById('emp').style.display='none';
+  document.getElementById('jroot').style.display='none';
+  setTimeout(()=>{
+    try{
+      const r=document.getElementById('jroot');
+      r.innerHTML='';
+      r.appendChild(rVal(DATA,0));
+      r.style.display='';
+      updStat(DATA);
+      const q=document.getElementById('bq').value;
+      if(q)doFilter(q);
+    }catch(e){toast('Hata: '+e.message);console.error(e);}
+    document.getElementById('sp').classList.remove('on');
+  },10);
+}
+
+/* ═══════════════════════════
+   CORE: rVal(value, depth)
+   
+   Returns a DOM node for any JSON value.
+   depth: used for depth-color borders on nested wrappers.
+═══════════════════════════ */
+function rVal(v,d){
+  if(v===null||v===undefined) return mks('vnil',v===null?'null':'—');
+  if(typeof v==='boolean')    return mks('vb2',String(v));
+  if(typeof v==='number')     return mks('vn',String(v));
+  if(typeof v==='string')     return rStr(v);
+  if(Array.isArray(v))        return rArr(v,d);
+  if(typeof v==='object')     return rObj(v,d);
+  return mks('',String(v));
+}
+
+/* ── String ── */
+function rStr(v){
+  const isUrl=/^https?:\/\//.test(v);
+  const cls=isUrl?'vurl':'vs';
+  if(v.length<=TRUNC){
+    const s=mks(cls,v);
+    if(isUrl){s.style.cursor='pointer';s.onclick=()=>window.open(v,'_blank');}
+    return s;
+  }
+  // Truncated
+  const w=mk('span','ts-wrap');
+  const txt=mks(cls,v.slice(0,TRUNC));
+  if(isUrl){txt.style.cursor='pointer';txt.onclick=()=>window.open(v,'_blank');}
+  const btn=mk('span','ts-btn');
+  btn.textContent=`+${v.length-TRUNC}`;
+  btn.dataset.exp='0';
+  btn.onclick=e=>{
+    e.stopPropagation();
+    const exp=btn.dataset.exp==='1';
+    txt.textContent=exp?v.slice(0,TRUNC):v;
+    btn.textContent=exp?`+${v.length-TRUNC}`:'▲';
+    btn.dataset.exp=exp?'0':'1';
+    if(exp)showTip('');
+  };
+  // Attach tooltip data to wrapper
+  w.dataset.tip=v.length>500?v.slice(0,500)+'…':v;
+  w.addEventListener('mouseenter',()=>showTip(w.dataset.tip));
+  w.addEventListener('mouseleave',()=>showTip(''));
+  w.appendChild(txt);w.appendChild(btn);
+  return w;
+}
+
+/* ── Object → KV table ──
+   Always rendered inline as a 2-column key|value table.
+   Depth > 0: wrapped in .nw for colored left border.
+═══════════════════════ */
+function rObj(obj,d){
+  const entries=Object.entries(obj);
+  if(!entries.length) return mks('eb','{}');
+
+  const tbl=mk('table','jt');
+
+  // Key column width: fit to longest key, max 200px
+  const maxK=Math.max(...entries.map(([k])=>k.length));
+  const kw=Math.min(maxK*7.5+24,200);
+  const cg=mk('colgroup');
+  const cc=mk('col');cc.style.width=kw+'px';
+  cg.appendChild(cc);cg.appendChild(mk('col')); // value col: no constraint
+  tbl.appendChild(cg);
+
+  const tb=mk('tbody');
+  entries.forEach(([k,v])=>{
+    const tr=mk('tr');
+    const tdK=mk('td','ck');tdK.textContent=k;
+    const tdV=mk('td','cv');
+    tdV.appendChild(rVal(v,d+1));
+    tr.appendChild(tdK);tr.appendChild(tdV);tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+
+  if(d===0) return tbl; // root object: no wrapper
+
+  const w=mk('div',`nw d${d%6}`);
+  w.appendChild(tbl);
+  return w;
+}
+
+/* ── Array ── */
+function rArr(arr,d){
+  if(!arr.length) return mks('eb','[]');
+  const allPrim=arr.every(x=>x===null||typeof x!=='object');
+  if(allPrim) return rPrimArr(arr);
+  const allObj=arr.every(x=>x&&typeof x==='object'&&!Array.isArray(x));
+  if(allObj)  return rObjArr(arr,d);
+  return rMixArr(arr,d);
+}
+
+/* Primitive array: pills if small, else single-col table */
+function rPrimArr(arr){
+  if(arr.length<=24){
+    const row=mk('div','pills');
+    arr.forEach(x=>{
+      const p=mk('span','pill');
+      const c=x===null?'vnil':typeof x==='number'?'vn':typeof x==='boolean'?'vb2':'vs';
+      p.appendChild(mks(c,String(x??'null')));
+      row.appendChild(p);
+    });
+    return row;
+  }
+  return rSingleCol(arr,1);
+}
+
+/* ── Array of objects → multi-column table ──
+
+   COLUMN WIDTH STRATEGY:
+   - Header: key.length * 7.5 + 24  (chars → px, mono font)
+   - Scalar values: measure actual display chars, cap at TRUNC
+   - Complex values (object/array): NO explicit width on col → auto
+     This lets the nested table dictate the column width naturally.
+     The outer scroll handles any resulting overflow.
+════════════════════════════════════════════ */
+function rObjArr(arr,d){
+  const ks=new Set();
+  arr.forEach(o=>Object.keys(o).forEach(k=>ks.add(k)));
+  const keys=[...ks];
+  const sk=`s${d}_${keys.join()}`;
+
+  /* Classify each column: scalar-only or has-complex */
+  const isComplex=k=>arr.some(r=>{const v=r[k];return v!==null&&typeof v==='object';});
+  const complexCols=new Set(keys.filter(isComplex));
+
+  /* Width for scalar columns only */
+  function scalarColW(k){
+    if(complexCols.has(k)) return null; // let browser auto-size
+    const hdrW=k.length*7.5+24;
+    let maxCW=0;
+    arr.forEach(r=>{
+      const v=r[k];
+      if(v==null){maxCW=Math.max(maxCW,28);return;}
+      if(typeof v==='boolean'){maxCW=Math.max(maxCW,40);return;}
+      if(typeof v==='number'){maxCW=Math.max(maxCW,String(v).length*7.2+4);return;}
+      // string — cap at TRUNC display chars
+      maxCW=Math.max(maxCW,Math.min(String(v).length,TRUNC)*7.2+4);
+    });
+    return Math.min(Math.max(hdrW,maxCW+24),280);
+  }
+
+  const tbl=mk('table','jt');
+
+  /* colgroup: idx fixed, per-col widths for scalars, nothing for complex */
+  const cg=mk('colgroup');
+  const ic=mk('col');ic.style.cssText='width:36px;min-width:36px;';cg.appendChild(ic);
+  keys.forEach(k=>{
+    const c=mk('col');
+    const w=scalarColW(k);
+    if(w) c.style.width=w+'px';
+    // complex cols: no width set → auto (grows to fit nested table)
+    cg.appendChild(c);
+  });
+  tbl.appendChild(cg);
+
+  /* thead */
+  const th=mk('thead'),hr=mk('tr');
+  const it=mk('th');it.style.cssText='width:36px;text-align:center;cursor:default;';it.textContent='#';hr.appendChild(it);
+  keys.forEach(k=>{
+    const h=mk('th');h.textContent=k;h.dataset.k=k;
+    h.onclick=()=>{
+      const cur=_sort[sk];
+      _sort[sk]=cur===k+'a'?k+'d':k+'a';
+      const asc=_sort[sk].endsWith('a');
+      tbl.querySelectorAll('thead th').forEach(t=>t.classList.remove('sa','sd'));
+      h.classList.add(asc?'sa':'sd');
+      const sorted=[...arr].sort((a,b)=>{
+        const av=a[k],bv=b[k];
+        if(av==null)return 1;if(bv==null)return -1;
+        if(typeof av==='number'&&typeof bv==='number')return(av-bv)*(asc?1:-1);
+        return String(av).localeCompare(String(bv))*(asc?1:-1);
+      });
+      tbl.replaceChild(buildRows(sorted,keys,complexCols,d),tbl.querySelector('tbody'));
+      const q=document.getElementById('bq').value;if(q)doFilter(q);
+    };
+    hr.appendChild(h);
+  });
+  th.appendChild(hr);tbl.appendChild(th);
+  tbl.appendChild(buildRows(arr,keys,complexCols,d));
+
+  if(d===0) return tbl;
+  const w=mk('div',`nw d${d%6}`);w.appendChild(tbl);return w;
+}
+
+function buildRows(arr,keys,complexCols,d){
+  const tb=mk('tbody');
+  arr.forEach((row,ri)=>{
+    const tr=mk('tr');
+    const ti=mk('td','ci');ti.textContent=ri+1;tr.appendChild(ti);
+    keys.forEach(k=>{
+      const v=row[k];
+      const td=mk('td','cv');
+      /* For complex columns: no max-width constraint. Cell grows with content. */
+      /* For scalar columns: content is already short (truncated by rStr). */
+      td.appendChild(rVal(v,d+1));
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  return tb;
+}
+
+/* Single-col table */
+function rSingleCol(arr,d){
+  const tbl=mk('table','jt');
+  const cg=mk('colgroup');
+  const ic=mk('col');ic.style.cssText='width:36px;min-width:36px;';cg.appendChild(ic);
+  cg.appendChild(mk('col'));tbl.appendChild(cg);
+  tbl.innerHTML+='<thead><tr><th style="width:36px;text-align:center;cursor:default">#</th><th>value</th></tr></thead>';
+  const tb=mk('tbody');
+  arr.forEach((x,i)=>{
+    const tr=mk('tr');
+    const ti=mk('td','ci');ti.textContent=i+1;
+    const tv=mk('td','cv');tv.appendChild(rVal(x,d));
+    tr.appendChild(ti);tr.appendChild(tv);tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  if(d===0)return tbl;
+  const w=mk('div',`nw d${d%6}`);w.appendChild(tbl);return w;
+}
+
+/* Mixed array */
+function rMixArr(arr,d){
+  const tbl=mk('table','jt');
+  const cg=mk('colgroup');
+  const ic=mk('col');ic.style.cssText='width:36px;min-width:36px;';cg.appendChild(ic);
+  cg.appendChild(mk('col'));tbl.appendChild(cg);
+  const hrow=document.createElement('thead');
+  hrow.innerHTML='<tr><th style="width:36px;text-align:center;cursor:default">#</th><th>value</th></tr>';
+  tbl.appendChild(hrow);
+  const tb=mk('tbody');
+  arr.forEach((x,i)=>{
+    const tr=mk('tr');
+    const ti=mk('td','ci');ti.textContent=i+1;
+    const tv=mk('td','cv');tv.appendChild(rVal(x,d+1));
+    tr.appendChild(ti);tr.appendChild(tv);tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  if(d===0)return tbl;
+  const w=mk('div',`nw d${d%6}`);w.appendChild(tbl);return w;
+}
+
+/* ═══════════════════════════
+   TOOLTIP
+═══════════════════════════ */
+const tipEl=document.getElementById('tip');
+function showTip(t){if(!t){tipEl.style.display='none';return;}tipEl.textContent=t;tipEl.style.display='block';}
+document.addEventListener('mousemove',e=>{
+  if(tipEl.style.display==='none')return;
+  const pad=14,tw=tipEl.offsetWidth||300,th2=tipEl.offsetHeight||60;
+  let x=e.clientX+pad,y=e.clientY+pad;
+  if(x+tw>window.innerWidth-8)x=e.clientX-tw-pad;
+  if(y+th2>window.innerHeight-8)y=e.clientY-th2-pad;
+  tipEl.style.left=Math.max(8,x)+'px';
+  tipEl.style.top=Math.max(8,y)+'px';
+});
+
+/* ═══════════════════════════
+   FILTER
+═══════════════════════════ */
+function doFilter(q){
+  const r=document.getElementById('jroot');
+  if(!r.children.length)return;
+  r.querySelectorAll('mark').forEach(m=>m.replaceWith(document.createTextNode(m.textContent)));
+  const t=q.toLowerCase().trim();
+  r.querySelectorAll('tbody tr').forEach(tr=>{tr.style.display=!t||tr.textContent.toLowerCase().includes(t)?'':'none';});
+  if(t)walkNodes(r,t);
+  updStat(DATA,t);
+}
+function walkNodes(node,t){
+  if(node.nodeType===3){
+    const tx=node.textContent,l=tx.toLowerCase();
+    if(l.includes(t)){
+      const i=l.indexOf(t),s=document.createElement('span');
+      s.innerHTML=esc(tx.slice(0,i))+'<mark>'+esc(tx.slice(i,i+t.length))+'</mark>'+esc(tx.slice(i+t.length));
+      node.parentNode.replaceChild(s,node);
+    }
+  }else if(node.nodeType===1&&!['SCRIPT','STYLE','MARK','BUTTON','TEXTAREA'].includes(node.tagName)){
+    [...node.childNodes].forEach(c=>walkNodes(c,t));
+  }
+}
+
+/* ═══════════════════════════
+   EXPORT
+═══════════════════════════ */
+function exportCSV(){
+  if(!DATA){toast('Önce render edin');return;}
+  const rows=Array.isArray(DATA)?DATA:[DATA];
+  const keys=[...new Set(rows.flatMap(r=>r&&typeof r==='object'?Object.keys(r):['value']))];
+  const hdr=keys.map(k=>`"${k}"`).join(',');
+  const body=rows.map(r=>keys.map(k=>{const v=r&&typeof r==='object'?r[k]:r;if(v==null)return'';if(typeof v==='object')return`"${JSON.stringify(v).replace(/"/g,'""')}"`;return`"${String(v).replace(/"/g,'""')}"`;}).join(',')).join('\n');
+  dl([hdr,body].join('\n'),'export.csv','text/csv');toast('CSV ✓');
+}
+function exportJSON(){if(!DATA){toast('Önce render edin');return;}dl(JSON.stringify(DATA,null,2),'export.json','application/json');toast('JSON ✓');}
+function dl(c,n,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:m}));a.download=n;a.click();}
+
+/* ═══════════════════════════
+   HELPERS
+═══════════════════════════ */
+function mk(t,c){const e=document.createElement(t);if(c)e.className=c;return e;}
+function mks(c,t){const s=mk('span',c);s.textContent=t;return s;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function updStat(p,f){
+  let t='';
+  if(f){const v=document.querySelectorAll('#jroot tbody tr:not([style*="none"])').length;t=`${v} row`;}
+  else if(!p)t='—';
+  else if(Array.isArray(p))t=`${p.length} items`;
+  else if(p&&typeof p==='object')t=`${Object.keys(p).length} keys`;
+  else t=typeof p;
+  document.getElementById('stat').textContent=t;
+}
+function clrOut(){
+  document.getElementById('jroot').innerHTML='';
+  document.getElementById('jroot').style.display='none';
+  document.getElementById('emp').style.display='flex';
+  document.getElementById('stat').textContent='—';
+  DATA=null;
+}
+let _tt;
+function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('sh');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('sh'),2200);}
+
+/* ═══════════════════════════
+   KEYBOARD
+═══════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();render();}
+  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='f'){e.preventDefault();fmtJSON();}
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='f'){e.preventDefault();document.getElementById('bq').focus();}
+});
+
+/* Auto-load */
+setTimeout(()=>loadSmp('customer'),200);
+</script>
+</body>
+</html>
